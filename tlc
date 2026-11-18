@@ -1,0 +1,74 @@
+
+`timescale 1ns / 1ps
+
+module traffic_light_controller #(
+    parameter integer CLK_FREQ = 50000000
+)(
+    input wire clk, reset, farm_car,
+    output reg R1, Y1, G1, R2, Y2, G2
+);
+
+reg [1:0] state;
+reg [31:0] count, blink_count;
+reg blink;
+
+localparam S0 = 2'b00, S1 = 2'b01,
+           S2 = 2'b10, S3 = 2'b11;
+
+localparam TIME_32 = 2 * CLK_FREQ;
+localparam TIME_4  = CLK_FREQ;
+localparam BLINK_HALF_PERIOD = CLK_FREQ / 4;
+
+// Blinking logic
+always @(posedge clk or posedge reset)
+begin
+    if (reset) begin
+        blink_count <= 0;
+        blink <= 1;
+    end
+    else if (blink_count >= BLINK_HALF_PERIOD - 1) begin
+        blink_count <= 0;
+        blink <= ~blink;
+    end
+    else
+        blink_count <= blink_count + 1;
+end
+
+// FSM logic
+always @(posedge clk or posedge reset)
+begin
+    if (reset || farm_car) begin
+        state <= S0;
+        count <= 0;
+    end
+    else begin
+        if (count >= ((state == S0 || state == S2) ?
+                      TIME_32 : TIME_4) - 1) begin
+            state <= state + 1'b1;
+            count <= 0;
+        end
+        else
+            count <= count + 1;
+    end
+end
+
+// Traffic light output logic
+always @(*)
+begin
+    {R1,Y1,G1,R2,Y2,G2} = 6'b000000;
+
+    if (farm_car) begin
+        R1 = 1;
+        G2 = 1;
+    end
+    else begin
+        case(state)
+            S0: begin R1 = 1; G2 = 1; end
+            S1: begin R1 = 1; Y2 = blink; end
+            S2: begin G1 = 1; R2 = 1; end
+            S3: begin Y1 = blink; R2 = 1; end
+        endcase
+    end
+end
+
+endmodule

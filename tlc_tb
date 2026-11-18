@@ -1,0 +1,39 @@
+
+`timescale 1ns / 1ps
+
+module tb_traffic_light_controller;
+
+reg clk, reset, farm_car;
+wire R1, Y1, G1, R2, Y2, G2;
+
+// Instantiate DUT
+traffic_light_controller #(.CLK_FREQ(4)) DUT (
+    .clk(clk), .reset(reset), .farm_car(farm_car),
+    .R1(R1), .Y1(Y1), .G1(G1),
+    .R2(R2), .Y2(Y2), .G2(G2)
+);
+
+// Clock generation
+initial begin
+    clk = 0;
+    forever #5 clk = ~clk;
+end
+
+// Test sequence
+initial begin
+    reset = 1;
+    farm_car = 0;
+
+    #20 reset = 0;
+    #800 farm_car = 1;
+    #200 farm_car = 0;
+    #300 $finish;
+end
+
+// Display outputs
+initial begin
+    $monitor("TIME=%0t RESET=%b FARM=%b | R1=%b Y1=%b G1=%b | R2=%b Y2=%b G2=%b",
+             $time, reset, farm_car, R1, Y1, G1, R2, Y2, G2);
+end
+
+endmodule
